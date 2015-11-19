@@ -116,7 +116,8 @@ input {
 
   function render(){
     // generate new random data
-    data = makeData(+document.getElementById("datacount").value);
+    data = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+
     // add transition to new path
     g.datum(data).selectAll("path").data(pie).transition().duration(1000).attrTween("d", arcTween)
 
