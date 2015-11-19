@@ -1,0 +1,214 @@
+<!DOCTYPE HTML>
+<meta charset="utf-8">
+<html>
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+div {
+  padding-left: 100px;
+  padding-top: 10px;
+  width: 30%;
+  margin: 0 auto;
+  font: 14px;
+}
+
+input {
+  border-top: 0;
+  border-left: 0;
+  border-right: 0;
+  text-align: center;
+  font: 14px;
+  width: 120px;
+}
+</style>
+
+<body>
+  <div>
+    Twitch Channel to Add: 
+    <input id="channel" value="" name="channelText"></input>
+  </div>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+<script src="https://code.jquery.com/jquery-latest.min.js"></script>
+
+<script>
+  var socket = io();
+  socket.emit('channel', '');
+  $('#channel').keypress(function(event){
+    var keycode = (event.keyCode ? event.keyCode : event.which);
+    if(keycode == '13'){
+      socket.emit('channel', $('#channel').val());
+    }
+  });
+
+  $(document).ready(function(){
+    $('#reset').click(function(){
+      socket.emit('flush', true);
+    });
+  });
+
+  var width = 960,
+      height = 500 - 29; // adjust for height of input bar div
+
+  var color = d3.scale.category20();
+
+  // draw and append the container
+  var svg = d3.select("body").append("svg")
+    .attr("width", width).attr("height", height);
+
+  // set the thickness of the inner and outer radii
+  var min = Math.min(width, height);
+  var oRadius = min / 2 * 0.9;
+  var iRadius = min / 2 * 0.85;
+
+  // construct default pie laoyut
+  var pie = d3.layout.pie().value(function(d){ return d; }).sort(null);
+
+  // construct arc generator
+  var arc = d3.svg.arc()
+    .outerRadius(oRadius)
+    .innerRadius(iRadius);
+
+  // creates the pie chart container
+  var g = svg.append('g')
+    .attr('transform', function(){
+      if ( window.innerWidth >= 960 ) var shiftWidth = width / 2;
+      if ( window.innerWidth < 960 ) var shiftWidth = width / 3;
+      return 'translate(' + shiftWidth + ',' + height / 2 + ')';
+    })
+
+  var data = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+  // enter data and draw pie chart
+  var path = g.datum(data).selectAll("path")
+    .data(pie)
+    .enter().append("path")
+      .attr("class","piechart")
+      .attr("fill", function(d,i){ return color(i); })
+      .attr("d", arc)
+      .each(function(d){ this._current = d; })
+
+
+  var radius = 100;
+  // draw and append the container
+  var legend = d3.select("body").append("svg")
+    .attr("class", "legend")
+    .attr("width", radius * 2)
+    .attr("height", radius * 2)
+    .selectAll("g")
+    .data(color.domain().slice().reverse())
+    .enter().append("g")
+      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; })
+      .attr("id", function(d, i) { return i; })
+
+  legend.append("rect")
+    .attr("width", 18)
+    .attr("height", 18)
+    .style("fill", color);
+
+  legend.append("text")
+    .attr("x", 24)
+    .attr("y", 9)
+    .attr("dy", ".35em")
+    .text(function(d) { return d; });
+
+  function render(){
+    // generate new random data
+    data = makeData(+document.getElementById("datacount").value);
+    // add transition to new path
+    g.datum(data).selectAll("path").data(pie).transition().duration(1000).attrTween("d", arcTween)
+
+    // add any new paths
+    g.datum(data).selectAll("path")
+      .data(pie)
+    .enter().append("path")
+      .attr("class","piechart")
+      .attr("fill", function(d,i){ return color(i); })
+      .attr("d", arc)
+      .each(function(d){ this._current = d; })
+
+    // remove data not being used
+    g.datum(data).selectAll("path")
+      .data(pie).exit().remove();
+
+    // update legend
+    var legend = d3.select("body").selectAll("svg").filter(".legend"); 
+    var legendText = legend.selectAll("text")
+  }
+
+  function renderWithData(data){
+    word_data = []
+    count_data = []
+
+    for (var i = data.length; i > -1; i--) {
+      if(i % 2 === 0) { // index is even
+        word_data.push(data[i]);
+      } else {
+        count_data.push(data[i])
+      }
+    }
+
+    // add transition to new path
+    g.datum(count_data).selectAll("path").data(pie).transition().duration(1000).attrTween("d", arcTween)
+
+    // add any new paths
+    g.datum(count_data).selectAll("path")
+      .data(pie)
+    .enter().append("path")
+      .attr("class","piechart")
+      .attr("fill", function(d,i){ return color(i); })
+      .attr("d", arc)
+      .each(function(d){ this._current = d; })
+
+    // remove data not being used
+    g.datum(count_data).selectAll("path")
+      .data(pie).exit().remove();
+
+    var legend = d3.select("body").selectAll("svg").filter(".legend"); 
+    var legendText = legend.selectAll("text").remove();
+    word_data.reverse();
+    count_data.reverse();
+    legend.selectAll("g").append("text")
+      .attr("x", 24)
+      .attr("y", 9)
+      .attr("dy", ".35em")
+      .text(function(d, i) { return word_data[i] + " " + count_data[i]; });
+  }
+
+  socket.on('chat message', function(msg){
+    renderWithData(msg);
+  });
+
+  socket.on('following', function(msg) {
+    $('#following').text('Following: ' + msg);
+  });
+
+  render();
+
+  function makeData(size){
+    return d3.range(size).map(function(item){
+     return Math.random()*100;
+    });
+  };
+
+  // Store the displayed angles in _current.
+  // Then, interpolate from _current to the new angles.
+  // During the transition, _current is updated in-place by d3.interpolate.
+  function arcTween(a) {
+    var i = d3.interpolate(this._current, a);
+    this._current = i(0);
+    return function(t) {
+      return arc(i(t));
+    };
+  }
+
+</script>
+
+</body>
+
+<footer>
+  <p id='following'>Following: </p>
+  <button id='reset'>Reset</button>
+</footer>

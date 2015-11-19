@@ -1,0 +1,8 @@
+{
+  "name": "Bob Ross Twitch Chat",
+  "description": "A Node.js app displaying most frequent word in Twitch chat.",
+  "repository": "https://github.com/heroku/node-js-getting-started",
+  "logo": "http://node-js-sample.herokuapp.com/node.svg",
+  "keywords": ["node", "express", "static"],
+  "image": "heroku/nodejs"
+}
